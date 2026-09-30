@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#141414">
+<title>Gurukrupa Quotation Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{--ink:#141414;--gold:#bb9a6b;--gd:#8f7346;--bg:#f4f2ee;--line:#e4e0d8;--mut:#6b6b6b;--red:#d33}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font:15px/1.5 Poppins,system-ui,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+header{background:var(--ink);color:var(--gold);padding:calc(12px + env(safe-area-inset-top)) 18px 12px;position:sticky;top:0;z-index:20;font-weight:600}
+header small{display:block;color:#999;font-weight:400;font-size:12px}
+main{max-width:640px;margin:auto;padding:14px}
+.view[hidden]{display:none}
+.view{animation:in .35s cubic-bezier(.2,.8,.2,1)}
+@keyframes in{from{opacity:0;transform:translateY(14px)}}
+@keyframes pop{from{opacity:0;transform:scale(.94)}}
+.card,details{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px}
+details{padding:4px 16px}summary{font-weight:600;padding:12px 0;cursor:pointer}details[open]{padding-bottom:14px}
+h3{font-size:15px;margin-bottom:10px}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:10px}
+input,select,textarea{display:block;width:100%;margin-top:3px;font:500 16px Poppins;color:var(--ink);padding:0 14px;height:50px;border:1.5px solid var(--line);border-radius:12px;background:#fbfaf8}
+textarea{height:auto;padding:12px 14px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--gold);box-shadow:0 0 0 4px rgba(187,154,107,.2)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.item{border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;background:#fdfcfa;animation:pop .35s both}
+.ih{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.x{border:0;background:#f1eee8;color:var(--red);width:38px;height:38px;border-radius:10px}
+.amt{display:flex;justify-content:space-between;font-size:13px;color:var(--mut)}.amt b{color:var(--ink);font-size:16px}
+button{font:600 15px Poppins;cursor:pointer;transition:transform .15s,background .2s}
+button:active{transform:scale(.96)}
+.ghost{width:100%;height:50px;border:2px dashed var(--gold);background:none;color:var(--gd);border-radius:14px}
+.pri{height:52px;border:0;border-radius:14px;background:var(--ink);color:var(--gold)}
+.sec{height:52px;border:0;border-radius:14px;background:#e9e5dc;color:var(--ink)}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.btns .pri{grid-column:1/-1}
+.row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;border-bottom:1px solid #f0ede6}
+.gr{display:flex;justify-content:space-between;align-items:baseline;padding-top:10px}.gr b{font-size:28px;color:var(--gd)}
+nav{position:fixed;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(4,1fr);background:rgba(20,20,20,.97);padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:30}
+nav button{background:none;border:0;color:#999;padding:6px 0;font-size:11px;border-radius:12px}
+nav button span{display:block;font-size:20px}
+nav button.on{color:var(--gold);background:rgba(187,154,107,.15)}
+#toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translate(-50%,30px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:14px;opacity:0;pointer-events:none;transition:.3s;z-index:40}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);background:#e9e5dc;border-radius:12px;padding:4px;gap:4px;margin-bottom:12px}
+.seg button{border:0;background:none;padding:10px 0;border-radius:9px;color:var(--mut);font-size:14px}.seg .on{background:var(--ink);color:#fff}
+.pr{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}.pr div{flex:1;min-width:0}
+.pr small{display:block;color:var(--mut);font-size:12px}.pr button{border:0;background:#f1eee8;border-radius:10px;padding:8px 12px;font-size:13px}
+.big{font-size:26px;font-weight:700;color:var(--gd)}
+.empty{text-align:center;color:var(--mut);padding:24px 0}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header id="hn"></header>
+<main>
+  <section class="view" id="v-quote"></section>
+  <section class="view" id="v-calc" hidden></section>
+  <section class="view" id="v-setup" hidden></section>
+  <section class="view" id="v-saved" hidden></section>
+</main>
+<nav id="nav">
+  <button data-a="tab" data-t="quote"><span>📄</span>Quote</button>
+  <button data-a="tab" data-t="calc"><span>🧮</span>Calculator</button>
+  <button data-a="tab" data-t="setup"><span>⚙️</span>Setup</button>
+  <button data-a="tab" data-t="saved"><span>🗂️</span>Saved</button>
+</nav>
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2, 8);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const f = n => n.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+const today = () => new Date().toISOString().slice(0,10);
+const dfmt = d => { const [y,m,dd] = d.split('-'); return `${dd}-${m}-${y.slice(2)}`; };
+
+/* ---------- Data ---------- */
+const D0 = {
+  firm:{name:'Gurukrupa Interior Works', addr:'Shop No. 1-2, Gujarat Industrial Estate, A.S. Motors Corner, Opp. Divya Gas Agency, Nr. Deep Multiplex, Chhani Road, Vadodara.',
+    phone:'99986 11603', email:'gurukrupa.interior33@gmail.com', gstin:'24ANJPK3772B1Z8', gst:9, next:28, logo:'', sign:'',
+    terms:'1) THIS QUOTATION IS VALID FOR 15 DAYS FROM THE DATE OF ISSUE.\n2) Above quoted rates are as per current aluminium and glass market rates, so if there is any change in these rates, window rates will be revised accordingly.\n3) Scaffolding or palak in client scope.\n4) GST charges extra as applicable.\n5) Payment: a) 50% advance b) 30% against material dispatch c) 20% on completion of work\n6) Goods once sold will not be taken back'},
+  rates:{alu:460, powder:30, glass:60, mesh:20, pvc:2.5, angle:12, khuniya:20, datta:10, cleat:0.25, labor:35, profit:20},
+  products:[
+    {id:'p1', name:'3 Track 3/4 Series Aluminium Window', desc:'Supply and fixing of 3 track 3/4 series aluminium window with mosquito net, 4mm light-gold reflective glass and milky white powder coating.', hsn:'76101000', unit:'SQ.FT.'},
+    {id:'p2', name:'Single Shutter Mosquito Net', desc:'Supply and fixing of single track aluminium frame white shutter of mosquito net.', hsn:'76101000', unit:'SQ.FT.'},
+    {id:'p3', name:'Bathroom Lowers', desc:'Supply and fixing of bathroom lowers with mosquito net and tilt axis glass system.', hsn:'76101000', unit:'NOS'},
+    {id:'p4', name:'Fixed Window', desc:'Supply and fixing of fixed window with aluminium frame and glass.', hsn:'76101000', unit:'SQ.FT.'}],
+  quotes:[]
+};
+let DB; try { DB = JSON.parse(localStorage.getItem('gk_db')); } catch {}
+DB = {...D0, ...DB, firm:{...D0.firm, ...DB?.firm}, rates:{...D0.rates, ...DB?.rates}};
+const save = () => { try { localStorage.setItem('gk_db', JSON.stringify(DB)); } catch { toast('Storage full – remove a large image'); } };
+const newQ = () => ({c:{name:'', addr:'', state:'GUJARAT', code:'24', gstin:''}, ref:'', date:today(), items:[{pid:DB.products[0]?.id, qty:'', rate:''}]});
+let Q = DB.draft || newQ(), E = null;
+const C = {u:'ft', pid:DB.products[0]?.id, w:[{s:'3dumal', l:'', h:'', q:1}]};
+
+/* ---------- Helpers ---------- */
+function toast(m){ const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2200); }
+function cnt(el, to){ const from = +el.dataset.v || 0, t0 = performance.now(); el.dataset.v = to;
+  (function s(t){ const p = Math.min(1, (t - t0)/500); el.textContent = '₹ ' + f(from + (to - from)*(1 - (1-p)**3)); if(p < 1) requestAnimationFrame(s); })(t0); }
+const O = 'ONE TWO THREE FOUR FIVE SIX SEVEN EIGHT NINE TEN ELEVEN TWELVE THIRTEEN FOURTEEN FIFTEEN SIXTEEN SEVENTEEN EIGHTEEN NINETEEN'.split(' ');
+const T = 'TWENTY THIRTY FORTY FIFTY SIXTY SEVENTY EIGHTY NINETY'.split(' ');
+const wd = n => { if(n < 20) return O[n-1] || ''; if(n < 100) return T[(n/10|0)-2] + (n%10 ? '-' + O[n%10-1] : '');
+  if(n < 1e3) return O[(n/100|0)-1] + ' HUNDRED' + (n%100 ? ' ' + wd(n%100) : '');
+  for(const [v,l] of [[1e7,'CRORE'],[1e5,'LAKH'],[1e3,'THOUSAND']]) if(n >= v) return wd(n/v|0) + ' ' + l + (n%v ? ' ' + wd(n%v) : ''); };
+function tot(q = Q){
+  const rows = q.items.map(i => ({...i, amt:Math.round((+i.qty||0)*(+i.rate||0))}));
+  const sub = rows.reduce((a,r) => a + r.amt, 0), t = +(sub*(+DB.firm.gst||0)/100).toFixed(2), raw = sub + 2*t, grand = Math.round(raw);
+  return {rows, sub, t, ro:+(grand-raw).toFixed(2), grand};
+}
+function ensureNo(){ if(!Q.no){ const n = +DB.firm.next || 1; Q.no = String(n).padStart(4,'0'); DB.firm.next = n + 1; } }
+function upsert(){ const c = structuredClone(Q), k = DB.quotes.findIndex(x => x.no === Q.no); k < 0 ? DB.quotes.unshift(c) : DB.quotes[k] = c; save(); }
+const fld = (l, b, v, a = '') => `<label>${l}<input data-b="${b}" value="${esc(v)}" ${a}></label>`;
+const num = 'type="number" inputmode="decimal" step="any"';
+
+/* ---------- Tabs ---------- */
+function tab(n){
+  document.querySelectorAll('.view').forEach(v => v.hidden = v.id !== 'v-' + n);
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.t === n));
+  ({quote:rQuote, calc:rCalc, setup:rSetup, saved:rSaved})[n](); scrollTo(0,0);
+}
+
+/* ---------- Quote tab ---------- */
+function rQuote(){
+  const P = DB.products;
+  $('#v-quote').innerHTML = `
+  <div class="card"><h3>Client details</h3>
+    ${fld('Client name', 'Q.c.name', Q.c.name, 'autocomplete="off"')}
+    <label>Address<textarea rows="2" data-b="Q.c.addr">${esc(Q.c.addr)}</textarea></label>
+    <div class="two">${fld('State', 'Q.c.state', Q.c.state)}${fld('State code', 'Q.c.code', Q.c.code, 'inputmode="numeric"')}</div>
+    <div class="two">${fld('Client GSTIN (optional)', 'Q.c.gstin', Q.c.gstin)}${fld('Ref. no (optional)', 'Q.ref', Q.ref)}</div>
+    <label>Date<input type="date" data-b="Q.date" value="${Q.date}"></label></div>
+  <div class="card"><h3>Items</h3>
+    ${P.length ? Q.items.map((it,i) => { const p = P.find(x => x.id == it.pid); return `
+    <div class="item"><div class="ih"><b>Item ${i+1}</b><button class="x" data-a="di" data-i="${i}">✕</button></div>
+      <select data-b="Q.items.${i}.pid" data-re>${P.map(x => `<option value="${x.id}" ${x.id == it.pid ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
+      <div class="two" style="margin-top:8px"><label>Qty (${esc(p?.unit || '')})<input ${num} data-b="Q.items.${i}.qty" value="${it.qty}" placeholder="0"></label>
+      <label>Rate ₹<input ${num} data-b="Q.items.${i}.rate" value="${it.rate}" placeholder="0"></label></div>
+      <div class="amt">Amount <b data-amt="${i}"></b></div></div>`; }).join('')
+    : '<p class="empty">Add products in the Setup tab first.</p>'}
+    <button class="ghost" data-a="add">+ Add item</button></div>
+  <div class="card"><div id="tt"></div><div class="gr"><span>Grand total</span><b id="gt"></b></div>
+    <div class="btns"><button class="pri" data-a="pdf">Generate PDF</button><button class="sec" data-a="share">Share</button><button class="sec" data-a="saveq">Save quote</button>
+    <button class="sec" data-a="newq" style="grid-column:1/-1">Start new quote</button></div></div>`;
+  upd();
+}
+function upd(){
+  const t = tot();
+  t.rows.forEach((r,i) => { const e = document.querySelector(`[data-amt="${i}"]`); if(e) e.textContent = '₹ ' + f(r.amt); });
+  const g = DB.firm.gst, r = (l,v) => `<div class="row"><span>${l}</span><b>${f(v)}</b></div>`;
+  $('#tt').innerHTML = r('Total amount', t.sub) + r(`CGST @${g}%`, t.t) + r(`SGST @${g}%`, t.t) + r('Round off', t.ro);
+  cnt($('#gt'), t.grand);
+}
+
+/* ---------- Calculator tab (your original formulas) ---------- */
+const S = {
+  '3dumal':{n:'3 Track DUMAL', rub:9, bear:45, lock:150, pvc:1, mesh:1, hw:{bear:6,lock:3,khuniya:12,datta:6,cleat:24,angle:4}, kg:(L,H)=>(2*L+2*H)*.313+(6*H+3*L)*.21875+3*H*.084375},
+  '2dumal':{n:'2 Track DUMAL', rub:9, bear:45, lock:150, pvc:0, mesh:0, hw:{bear:4,lock:2,khuniya:8,datta:4,cleat:16,angle:4}, kg:(L,H)=>(2*L+2*H)*.313+(4*H+2*L)*.21875+2*H*.084375},
+  '34series':{n:'3 Track 3/4 Series', rub:5, bear:9, lock:25, pvc:1, mesh:1, hw:{bear:6,lock:3,khuniya:0,datta:0,cleat:0,angle:4}, kg:(L,H)=>(2*H+L)*.173+L*.2+(6*H+3*L)*.092},
+  '2_34':{n:'2 Track 3/4 Series', rub:5, bear:9, lock:25, pvc:0, mesh:0, hw:{bear:4,lock:2,khuniya:0,datta:0,cleat:0,angle:4}, kg:(L,H)=>(2*L+2*H)*.173+(4*H+2*L)*.092}
+};
+const UF = {ft:1, in:1/12, cm:1/30.48, mm:1/304.8};
+function wc(w){
+  const R = Object.fromEntries(Object.entries(DB.rates).map(([k,v]) => [k, +v||0])), k = UF[C.u];
+  const L = (+w.l||0)*k, H = (+w.h||0)*k, q = Math.max(1, +w.q||1); if(!L || !H) return null;
+  const s = S[w.s], sw = L/2, n = {rub:4*(sw+H)*q, pvc:s.pvc ? 2*(sw+H)*q : 0, mesh:s.mesh ? sw*H*q : 0, glass:2*sw*H*q};
+  for(const x in s.hw) n[x] = s.hw[x]*q;
+  const kg = s.kg(L,H)*q, area = L*H*q;
+  const base = kg*(R.alu+R.powder) + area*R.labor + n.glass*R.glass + n.mesh*R.mesh + n.rub*s.rub + n.pvc*R.pvc + n.bear*s.bear + n.lock*s.lock + n.khuniya*R.khuniya + n.datta*R.datta + n.cleat*R.cleat + n.angle*R.angle;
+  return {area, base};
+}
+function rCalc(){
+  const row = (w,i) => `<div class="item"><div class="ih"><b>Window ${i+1}</b><button class="x" data-a="cdel" data-i="${i}">✕</button></div>
+    <select data-b="C.w.${i}.s">${Object.entries(S).map(([k,v]) => `<option value="${k}" ${k == w.s ? 'selected' : ''}>${v.n}</option>`).join('')}</select>
+    <div class="two" style="margin-top:8px"><label>Length<input ${num} data-b="C.w.${i}.l" value="${w.l}" placeholder="0"></label><label>Height<input ${num} data-b="C.w.${i}.h" value="${w.h}" placeholder="0"></label></div>
+    <label>Quantity<input ${num} data-b="C.w.${i}.q" value="${w.q}"></label></div>`;
+  $('#v-calc').innerHTML = `<div class="card"><h3>Window calculator</h3>
+    <div class="seg">${Object.keys(UF).map(u => `<button class="${u == C.u ? 'on' : ''}" data-a="cu" data-u="${u}">${u == 'in' ? 'inch' : u}</button>`).join('')}</div>
+    ${C.w.map(row).join('')}<button class="ghost" data-a="cadd">+ Add window</button></div><div id="cres"></div>`;
+  calc();
+}
+function calc(){
+  let area = 0, base = 0; C.w.forEach(w => { const r = wc(w); if(r){ area += r.area; base += r.base; } });
+  const el = $('#cres'); if(!area){ el.innerHTML = ''; return; }
+  const fin = base*(1 + (+DB.rates.profit||0)/100), sq = fin/area;
+  el.innerHTML = `<div class="card"><div class="row"><span>Total area</span><b>${f(area)} sq.ft</b></div>
+    <div class="row"><span>Your cost / sq.ft</span><b>₹ ${f(base/area)}</b></div>
+    <div class="row"><span>Selling / sq.ft (+${DB.rates.profit}% profit)</span><b>₹ ${f(sq)}</b></div>
+    <div class="gr"><span>Selling total</span><b>₹ ${Math.round(fin).toLocaleString('en-IN')}</b></div>
+    <label style="margin-top:12px">Add to quote as<select data-b="C.pid">${DB.products.map(p => `<option value="${p.id}" ${p.id == C.pid ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+    <button class="pri" style="width:100%" data-a="c2q" data-area="${area}" data-rate="${sq}">Add to quotation</button></div>`;
+}
+
+/* ---------- Setup tab ---------- */
+function rSetup(){
+  const F = DB.firm, e = DB.products.find(p => p.id === E) || {name:'', desc:'', hsn:'76101000', unit:'SQ.FT.'};
+  $('#v-setup').innerHTML = `
+  <details open><summary>My products</summary>
+    ${DB.products.map(p => `<div class="pr"><div><b>${esc(p.name)}</b><small>${p.unit} · HSN ${esc(p.hsn)}</small></div><button data-a="editP" data-id="${p.id}">Edit</button><button data-a="delP" data-id="${p.id}">✕</button></div>`).join('')}
+    <h3 style="margin-top:14px">${E ? 'Edit product' : 'Add a product'}</h3>
+    <label>Product name<input id="pn" value="${esc(e.name)}"></label>
+    <label>Description on quotation<textarea id="pd" rows="3">${esc(e.desc)}</textarea></label>
+    <div class="two"><label>HSN code<input id="ph" value="${esc(e.hsn)}" inputmode="numeric"></label>
+    <label>Unit<select id="pu">${['SQ.FT.','NOS','RFT','SQ.MT.','SET','LS'].map(u => `<option ${u == e.unit ? 'selected' : ''}>${u}</option>`).join('')}</select></label></div>
+    <button class="pri" style="width:100%" data-a="saveP">Save product</button></details>
+  <details><summary>Firm and quotation settings</summary>
+    ${fld('Firm name', 'DB.firm.name', F.name)}<label>Address<textarea rows="3" data-b="DB.firm.addr">${esc(F.addr)}</textarea></label>
+    <div class="two">${fld('Mobile', 'DB.firm.phone', F.phone)}${fld('E-mail', 'DB.firm.email', F.email)}</div>
+    ${fld('Firm GSTIN', 'DB.firm.gstin', F.gstin)}
+    <div class="two">${fld('GST % (total)', 'DB.firm.gst', F.gst * 2, num)}${fld('Next quote no.', 'DB.firm.next', F.next, num)}</div>
+    <label>Terms and conditions<textarea rows="8" data-b="DB.firm.terms">${esc(F.terms)}</textarea></label></details>
+  <details><summary>Logo and signature</summary>
+    <label>Logo (shown on black header)<input type="file" accept="image/*" data-img="logo"></label>
+    <label>Signature / stamp<input type="file" accept="image/*" data-img="sign"></label>
+    <p style="font-size:12px;color:var(--mut)">${F.logo ? 'Logo saved. ' : 'No logo yet. '}${F.sign ? 'Signature saved.' : 'No signature yet.'}</p></details>
+  <details><summary>Calculator rates</summary><div class="two">
+    ${Object.entries({alu:'Aluminium ₹/kg', powder:'Powder ₹/kg', glass:'Glass', mesh:'Mesh', pvc:'PVC patti', angle:'Angle', khuniya:'Khuniya', datta:'Datta', cleat:'Cleat', labor:'Labour ₹/sq.ft', profit:'Profit %'}).map(([k,l]) => fld(l, 'DB.rates.' + k, DB.rates[k], num)).join('')}</div></details>`;
+}
+function img(file, cb){
+  const r = new FileReader(); r.onload = () => { const i = new Image(); i.onload = () => { const k = Math.min(1, 500/i.width), c = document.createElement('canvas');
+    c.width = i.width*k; c.height = i.height*k; c.getContext('2d').drawImage(i, 0, 0, c.width, c.height); cb(c.toDataURL('image/png')); }; i.src = r.result; };
+  r.readAsDataURL(file);
+}
+
+/* ---------- Saved tab ---------- */
+function rSaved(){
+  $('#v-saved').innerHTML = DB.quotes.length ? DB.quotes.map(q => `<div class="card item"><div class="ih"><b>#${q.no} · ${esc(q.c.name)}</b><button class="x" data-a="delQ" data-no="${q.no}">✕</button></div>
+    <div class="amt">${dfmt(q.date)}<b>₹ ${f(tot(q).grand)}</b></div><div class="btns"><button class="sec" data-a="openQ" data-no="${q.no}">Open</button><button class="sec" data-a="dupQ" data-no="${q.no}">Duplicate</button></div></div>`).join('')
+    : '<p class="empty">No saved quotations yet.<br>Generate or save one from the Quote tab.</p>';
+}
+
+/* ---------- PDF ---------- */
+function build(q){
+  const {jsPDF} = window.jspdf, d = new jsPDF({unit:'mm', format:'a4'}), F = DB.firm, t = tot(q);
+  const xs = [18, 92, 114, 134, 152, 174], line = (x1,y1,x2,y2) => d.line(x1,y1,x2,y2);
+  d.setLineWidth(.3); d.setDrawColor(0); d.setTextColor(0);
+  d.setFillColor(17,17,17); d.rect(0,0,95,30,'F'); d.setFillColor(187,154,107); d.rect(95,0,115,1.6,'F');
+  if(F.logo){ const p = d.getImageProperties(F.logo), h = 22, w = Math.min(85, h*p.width/p.height); d.addImage(F.logo,'PNG',5,4,w,w*p.height/p.width > h ? h : w*p.height/p.width); }
+  else { d.setTextColor(187,154,107); d.setFont('helvetica','bold'); d.setFontSize(15); d.text(d.splitTextToSize(F.name, 80), 8, 14); d.setTextColor(0); }
+  d.setFont('helvetica','normal'); d.setFontSize(8); d.text(d.splitTextToSize(F.addr, 100), 202, 10, {align:'right'});
+  d.setFont('helvetica','bold'); d.text(`Mobile : ${F.phone}, E-mail : ${F.email}`, 202, 25, {align:'right'});
+  d.setFillColor(20,20,20); d.rect(0,291,45,6,'F'); d.setFillColor(140,30,30); d.rect(45,291,55,6,'F'); d.setFillColor(187,154,107); d.rect(100,291,55,6,'F'); d.setFillColor(210,210,210); d.rect(155,291,55,6,'F');
+  // header rows
+  d.setFontSize(8); d.text('GSTIN No.', 10, 39); d.setFont('helvetica','normal'); d.text(F.gstin, 28, 39); d.setFont('helvetica','bold'); d.setFontSize(10); d.text('QUOTATION', 75, 39);
+  line(8,41,202,41); d.setFontSize(8); d.text('TO,', 10, 46); d.setFontSize(9); d.text(d.splitTextToSize(q.c.name.toUpperCase(), 95), 10, 52);
+  d.setFontSize(7.5); d.text(d.splitTextToSize(q.c.addr.toUpperCase(), 95), 10, 57);
+  d.setFontSize(8); d.text('State', 10, 69); d.setFont('helvetica','normal'); d.text(q.c.state, 28, 69); d.setFont('helvetica','bold'); d.text('Code', 80, 69); d.setFont('helvetica','normal'); d.text(q.c.code, 92, 69);
+  line(110,41,110,71); [48,55,62].forEach(y => line(110,y,202,y)); d.setFont('helvetica','bold');
+  d.text('Qout. No', 112, 46); d.setFont('helvetica','normal'); d.text(q.no, 128, 46); d.setFont('helvetica','bold'); d.text('Date', 170, 46); d.setFont('helvetica','normal'); d.text(dfmt(q.date), 183, 46);
+  d.setFont('helvetica','bold'); d.text('Ref.No', 112, 53); d.setFont('helvetica','normal'); d.text(q.ref || '', 128, 53); d.setFont('helvetica','bold'); d.text('Date', 170, 53); d.setFont('helvetica','normal'); d.text(dfmt(q.date), 183, 53);
+  d.setFont('helvetica','bold'); d.text('Kind Attn.', 112, 60); d.text('GSTIN No.', 112, 69); d.setFont('helvetica','normal'); d.text(q.c.gstin || '', 132, 69);
+  line(8,71,202,71); d.text('Dear Sir;', 10, 76); d.setFontSize(7.5); d.text('We thank you very much for your inquiry as noted and are pleased to submit our most competitive offer for the same as under :', 10, 81);
+  line(8,83,202,83);
+  // items table
+  let hb = 92; const items = t.rows;
+  d.autoTable({startY:84, margin:{left:8, right:8}, tableWidth:194, theme:'plain',
+    styles:{fontSize:8, cellPadding:2, textColor:0}, headStyles:{fontStyle:'bold', halign:'center'},
+    head:[['Sr No','Description','HSN Code','Qty','Unit','Rate','Amount']],
+    body:items.map((r,i) => { const p = r.p || DB.products.find(x => x.id == r.pid) || {desc:'', hsn:'', unit:''}; return [i+1, '\n' + p.desc.toUpperCase(), p.hsn, (+r.qty).toFixed(2), p.unit, f(+r.rate||0), f(r.amt)]; }),
+    columnStyles:{0:{cellWidth:10,halign:'center'},1:{cellWidth:74},2:{cellWidth:22,halign:'center'},3:{cellWidth:20,halign:'center'},4:{cellWidth:18,halign:'center'},5:{cellWidth:22,halign:'right'},6:{cellWidth:28,halign:'right'}},
+    didDrawCell:c => { if(c.section === 'head') hb = c.cell.y + c.cell.height;
+      if(c.section === 'body' && c.column.index === 1){ const r = items[c.row.index], p = r.p || DB.products.find(x => x.id == r.pid) || {name:'Item'};
+        d.setFont('helvetica','bold'); d.setFontSize(9); d.text(p.name.toUpperCase(), c.cell.x + 2, c.cell.y + 4.6); d.setFont('helvetica','normal'); } }});
+  let y = Math.max(d.lastAutoTable.finalY + 3, 205), one = d.getNumberOfPages() === 1;
+  if(y + 77 > 289){ d.addPage(); y = 15; one = false; }
+  if(one){ line(8,hb,202,hb); xs.forEach(x => line(x,84,x,y)); }
+  line(8,y,202,y); d.setFontSize(8);
+  const tr = (l,v,yy,b) => { d.setFont('helvetica', b ? 'bold' : 'normal'); d.text(l, 110, yy); d.text(f(v), 200, yy, {align:'right'}); };
+  const g = +F.gst || 0; tr('Total Amount:-', t.sub, y+5, 1); tr(`CGST @${g.toFixed(2)}%`, t.t, y+11); tr(`SGST @${g.toFixed(2)}%`, t.t, y+16); tr('Round Off', t.ro, y+21);
+  line(8,y+25,202,y+25); d.setFont('helvetica','bold'); d.setFontSize(7.5); d.text(d.splitTextToSize(`RUPEES : ${wd(t.grand)} ONLY`, 96), 10, y+30);
+  d.setFontSize(8); d.text('Total Amount:-', 110, y+30); d.text(f(t.grand), 200, y+30, {align:'right'});
+  line(8,y+34,202,y+34); d.setFont('helvetica','bold'); d.text('Terms & Condition :', 10, y+39); d.setFont('helvetica','normal'); d.setFontSize(6.5);
+  d.text(d.splitTextToSize(F.terms, 96), 10, y+43);
+  d.setFont('helvetica','bold'); d.setFontSize(8); d.text('For, ' + F.name.toUpperCase(), 156, y+39, {align:'center'});
+  if(F.sign){ const p = d.getImageProperties(F.sign), h = Math.min(16, 40*p.height/p.width); d.addImage(F.sign,'PNG',136,y+41,h*p.width/p.height,h); }
+  d.text('(Authorized Signatory)', 156, y+62, {align:'center'}); line(108,y+65,202,y+65); d.text('Name Designation', 110, y+70);
+  line(108,y+25,108,y+77); d.rect(8, one ? 34 : y, 194, one ? y+77-34 : 77);
+  return d;
+}
+async function pdf(share){
+  if(!Q.c.name.trim()) return toast('Enter the client name');
+  if(!tot().sub) return toast('Enter quantity and rate');
+  ensureNo(); Q.items.forEach(i => i.p = DB.products.find(x => x.id == i.pid) || i.p); upsert();
+  const d = build(Q), n = `Quotation-${Q.no}-${Q.c.name.trim().replace(/\W+/g,'_')}.pdf`;
+  if(share && navigator.canShare){ const file = new File([d.output('blob')], n, {type:'application/pdf'});
+    if(navigator.canShare({files:[file]})){ try { await navigator.share({files:[file], title:n}); return; } catch(e){ if(e.name === 'AbortError') return; } } }
+  d.save(n); toast('PDF downloaded');
+}
+
+/* ---------- Events ---------- */
+function set(p, v){ const k = p.split('.'); let o = ({Q,DB,C})[k.shift()]; while(k.length > 1) o = o[k.shift()]; o[k[0]] = v; }
+document.addEventListener('input', e => {
+  const el = e.target, p = el.dataset.b; if(!p) return;
+  let v = el.value; if(p === 'DB.firm.gst') v = (+v||0)/2;
+  set(p, v);
+  if(p[0] === 'Q'){ if(/items/.test(p)) upd(); DB.draft = Q; save(); } else if(p[0] === 'C') calc(); else save();
+  if(el.hasAttribute('data-re')) rQuote();
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if(el.dataset.img) img(el.files[0], u => { DB.firm[el.dataset.img] = u; save(); rSetup(); toast('Image saved'); });
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-a]'); if(!b) return;
+  const D = b.dataset, i = +D.i, P = DB.products;
+  ({
+    tab:() => tab(D.t),
+    add:() => { Q.items.push({pid:Q.items.at(-1)?.pid || P[0]?.id, qty:'', rate:''}); rQuote(); },
+    di:() => { Q.items.splice(i,1); if(!Q.items.length) Q.items.push({pid:P[0]?.id, qty:'', rate:''}); rQuote(); },
+    pdf:() => pdf(false), share:() => pdf(true),
+    saveq:() => { if(!Q.c.name.trim()) return toast('Enter the client name'); ensureNo(); Q.items.forEach(x => x.p = P.find(y => y.id == x.pid) || x.p); upsert(); toast('Saved as #' + Q.no); },
+    newq:() => { Q = newQ(); DB.draft = Q; save(); rQuote(); scrollTo(0,0); },
+    cu:() => { C.u = D.u; rCalc(); },
+    cadd:() => { C.w.push({...C.w.at(-1), l:'', h:'', q:1}); rCalc(); },
+    cdel:() => { C.w.splice(i,1); if(!C.w.length) C.w.push({s:'3dumal', l:'', h:'', q:1}); rCalc(); },
+    c2q:() => { const it = {pid:C.pid || P[0]?.id, qty:(+D.area).toFixed(2), rate:String(Math.round(+D.rate))}, last = Q.items.at(-1);
+      last && !last.qty && !last.rate ? Q.items[Q.items.length-1] = it : Q.items.push(it); DB.draft = Q; save(); tab('quote'); toast('Added to quotation'); },
+    saveP:() => { const n = $('#pn').value.trim(); if(!n) return toast('Enter a product name');
+      const o = {id:E || uid(), name:n, desc:$('#pd').value.trim(), hsn:$('#ph').value.trim(), unit:$('#pu').value}, k = P.findIndex(x => x.id === E);
+      k < 0 ? P.push(o) : P[k] = o; E = null; save(); rSetup(); toast('Product saved'); },
+    editP:() => { E = D.id; rSetup(); scrollTo(0, document.body.scrollHeight); },
+    delP:() => { if(confirm('Delete this product?')){ DB.products = P.filter(x => x.id !== D.id); save(); rSetup(); } },
+    openQ:() => { Q = structuredClone(DB.quotes.find(x => x.no === D.no)); tab('quote'); },
+    dupQ:() => { Q = structuredClone(DB.quotes.find(x => x.no === D.no)); delete Q.no; Q.date = today(); tab('quote'); toast('Copied – new number on save'); },
+    delQ:() => { if(confirm('Delete quotation #' + D.no + '?')){ DB.quotes = DB.quotes.filter(x => x.no !== D.no); save(); rSaved(); } }
+  })[D.a]?.();
+});
+
+$('#hn').innerHTML = `${esc(DB.firm.name)}<small>Quotation studio</small>`;
+tab('quote');
+</script>
+</body>
+</html>
