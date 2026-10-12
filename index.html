@@ -26,7 +26,7 @@ label{display:block;font-size:12px;color:var(--mut);margin-bottom:10px}
 input,select,textarea{display:block;width:100%;margin-top:3px;font:500 16px Poppins;color:var(--ink);padding:0 14px;height:50px;border:1.5px solid var(--line);border-radius:12px;background:#fbfaf8}
 textarea{height:auto;padding:12px 14px;resize:vertical}
 input:focus,select:focus,textarea:focus{outline:0;border-color:var(--gold);box-shadow:0 0 0 4px rgba(187,154,107,.2)}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.four{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.four input,.three input{padding:0 8px;font-size:15px}.hint{font-size:12px;color:var(--mut);margin:0 0 8px}
 .item{border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;background:#fdfcfa;animation:pop .35s both}
 .ih{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .x{border:0;background:#f1eee8;color:var(--red);width:38px;height:38px;border-radius:10px}
@@ -51,6 +51,7 @@ nav button.on{color:var(--gold);background:rgba(187,154,107,.15)}
 .pr small{display:block;color:var(--mut);font-size:12px}.pr button{border:0;background:#f1eee8;border-radius:10px;padding:8px 12px;font-size:13px}
 .big{font-size:26px;font-weight:700;color:var(--gd)}
 .empty{text-align:center;color:var(--mut);padding:24px 0}
+#login{position:fixed;inset:0;background:var(--ink);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;animation:in .4s}#login[hidden]{display:none}#login form{width:100%;max-width:360px}#login h2{color:var(--gold);margin-bottom:4px}#login p{color:#999;font-size:14px;margin-bottom:18px}#login label{color:#aaa}#login input{background:#222;color:#fff;border-color:#333}#login .pri{width:100%;background:var(--gold);color:var(--ink)}#le{color:#f66;font-size:13px;min-height:20px;margin-bottom:8px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -69,8 +70,12 @@ nav button.on{color:var(--gold);background:rgba(187,154,107,.15)}
   <button data-a="tab" data-t="saved"><span>🗂️</span>Saved</button>
 </nav>
 <div id="toast"></div>
+<div id="login"><form id="lf"><h2>Gurukrupa Quotation Studio</h2><p>Sign in to continue</p><label>Email<input id="lem" type="email" autocomplete="username" required></label><label>Password<input id="lpw" type="password" autocomplete="current-password" required></label><div id="le"></div><button class="pri" type="submit">Sign in</button></form></div>
 
-<script>
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, getDoc, getDocs, setDoc, deleteDoc, onSnapshot} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 const $ = s => document.querySelector(s);
 const uid = () => Math.random().toString(36).slice(2, 8);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -88,18 +93,51 @@ const D0 = {
     terms:'1) THIS QUOTATION IS VALID FOR 15 DAYS FROM THE DATE OF ISSUE.\n2) Above quoted rates are as per current aluminium and glass market rates, so if there is any change in these rates, window rates will be revised accordingly.\n3) Scaffolding or palak in client scope.\n4) GST charges extra as applicable.\n5) Payment: a) 50% advance b) 30% against material dispatch c) 20% on completion of work\n6) Goods once sold will not be taken back'},
   rates:{alu:460, powder:30, glass:60, mesh:20, pvc:2.5, angle:12, khuniya:20, datta:10, cleat:0.25, labor:35, profit:20},
   products:[
-    {id:'p1', name:'3 Track 3/4 Series Aluminium Window', desc:'Supply and fixing of 3 track 3/4 series aluminium window with mosquito net, 4mm light-gold reflective glass and milky white powder coating.', hsn:'76101000', unit:'SQ.FT.'},
-    {id:'p2', name:'Single Shutter Mosquito Net', desc:'Supply and fixing of single track aluminium frame white shutter of mosquito net.', hsn:'76101000', unit:'SQ.FT.'},
-    {id:'p3', name:'Bathroom Lowers', desc:'Supply and fixing of bathroom lowers with mosquito net and tilt axis glass system.', hsn:'76101000', unit:'NOS'},
-    {id:'p4', name:'Fixed Window', desc:'Supply and fixing of fixed window with aluminium frame and glass.', hsn:'76101000', unit:'SQ.FT.'}],
-  quotes:[]
+    {id:'p1', name:'3 Track 3/4 Series Aluminium Window', desc:'Supply and fixing of 3 track 3/4 series aluminium window with mosquito net, 4mm light-gold reflective glass and milky white powder coating.', hsn:'76101000', unit:'SQ.FT.', calc:'34series', rate:''},
+    {id:'p2', name:'Single Shutter Mosquito Net', desc:'Supply and fixing of single track aluminium frame white shutter of mosquito net.', hsn:'76101000', unit:'SQ.FT.', calc:'', rate:175},
+    {id:'p3', name:'Bathroom Lowers', desc:'Supply and fixing of bathroom lowers with mosquito net and tilt axis glass system.', hsn:'76101000', unit:'NOS', calc:'', rate:2500},
+    {id:'p4', name:'Fixed Window', desc:'Supply and fixing of fixed window with aluminium frame and glass.', hsn:'76101000', unit:'SQ.FT.', calc:'', rate:250}],
+  quotes:[], clients:[], visits:[]
 };
 let DB; try { DB = JSON.parse(localStorage.getItem('gk_db')); } catch {}
 DB = {...D0, ...DB, firm:{...D0.firm, ...DB?.firm}, rates:{...D0.rates, ...DB?.rates}};
-const save = () => { try { localStorage.setItem('gk_db', JSON.stringify(DB)); } catch { toast('Storage full – remove a large image'); } };
-const newQ = () => ({c:{name:'', addr:'', state:'GUJARAT', code:'24', gstin:''}, ref:'', date:today(), items:[{pid:DB.products[0]?.id, qty:'', rate:''}]});
-let Q = DB.draft || newQ(), E = null;
-const C = {u:'ft', pid:DB.products[0]?.id, w:[{s:'3dumal', l:'', h:'', q:1}]};
+const PARTS = [
+ {id:'tkD',name:'Track profile (DUMAL)',unit:'ft',rate:0,kg:.313},{id:'hdD',name:'Handle profile (DUMAL)',unit:'ft',rate:0,kg:.21875},{id:'ilD',name:'Interlock profile (DUMAL)',unit:'ft',rate:0,kg:.084375},
+ {id:'tk34',name:'Track profile (3/4)',unit:'ft',rate:0,kg:.173},{id:'tb34',name:'Track bottom (3/4)',unit:'ft',rate:0,kg:.2},{id:'hd34',name:'Handle profile (3/4)',unit:'ft',rate:0,kg:.092},
+ {id:'rbD',name:'Rubber (DUMAL)',unit:'ft',rate:9,kg:0},{id:'rb34',name:'Rubber (3/4)',unit:'ft',rate:5,kg:0},{id:'pvc',name:'PVC patti',unit:'ft',rate:2.5,kg:0},
+ {id:'mesh',name:'Mosquito mesh',unit:'sq.ft',rate:20,kg:0},{id:'glass',name:'Glass',unit:'sq.ft',rate:60,kg:0},
+ {id:'brD',name:'Bearing (DUMAL)',unit:'pcs',rate:45,kg:0},{id:'br34',name:'Bearing (3/4)',unit:'pcs',rate:9,kg:0},{id:'lkD',name:'Lock (DUMAL)',unit:'pcs',rate:150,kg:0},{id:'lk34',name:'Lock (3/4)',unit:'pcs',rate:25,kg:0},
+ {id:'kh',name:'Khuniya',unit:'pcs',rate:20,kg:0},{id:'dt',name:'Datta',unit:'pcs',rate:10,kg:0},{id:'cl',name:'Corner cleat',unit:'pcs',rate:.25,kg:0},{id:'ag',name:'Angle',unit:'pcs',rate:12,kg:0}];
+// recipe line = [part, ×Length, ×Height, ×Length×Height, +Fixed]
+const ln = ([p,a=0,b=0,c=0,d=0]) => ({p,a,b,c,d});
+const TEMPL = Object.fromEntries(Object.entries({
+ '3 Track DUMAL':[['tkD',2,2],['hdD',3,6],['ilD',0,3],['rbD',2,4],['pvc',1,2],['mesh',0,0,.5],['glass',0,0,1],['brD',0,0,0,6],['lkD',0,0,0,3],['kh',0,0,0,12],['dt',0,0,0,6],['cl',0,0,0,24],['ag',0,0,0,4]],
+ '2 Track DUMAL':[['tkD',2,2],['hdD',2,4],['ilD',0,2],['rbD',2,4],['glass',0,0,1],['brD',0,0,0,4],['lkD',0,0,0,2],['kh',0,0,0,8],['dt',0,0,0,4],['cl',0,0,0,16],['ag',0,0,0,4]],
+ '3 Track 3/4 Series':[['tk34',1,2],['tb34',1],['hd34',3,6],['rb34',2,4],['pvc',1,2],['mesh',0,0,.5],['glass',0,0,1],['br34',0,0,0,6],['lk34',0,0,0,3],['ag',0,0,0,4]],
+ '2 Track 3/4 Series':[['tk34',2,2],['hd34',2,4],['rb34',2,4],['glass',0,0,1],['br34',0,0,0,4],['lk34',0,0,0,2],['ag',0,0,0,4]]
+}).map(([k,v]) => [k, v.map(ln)]));
+const TM = {'3dumal':'3 Track DUMAL','2dumal':'2 Track DUMAL','34series':'3 Track 3/4 Series','2_34':'2 Track 3/4 Series'};
+const mig = () => {
+  if(!DB.parts){ DB.parts = structuredClone(PARTS); const m = {glass:'glass', mesh:'mesh', pvc:'pvc', angle:'ag', khuniya:'kh', datta:'dt', cleat:'cl'};
+    for(const k in m){ const x = DB.parts.find(y => y.id === m[k]); if(x && DB.rates[k] != null) x.rate = +DB.rates[k]; } }
+  DB.products.forEach(p => { if(!('calc' in p)){ const d = D0.products.find(x => x.id === p.id); p.calc = d?.calc || ''; p.rate = d?.rate ?? ''; }
+    if(!p.recipe) p.recipe = TM[p.calc] ? structuredClone(TEMPL[TM[p.calc]]) : [];
+    if(p.sec === undefined) p.sec = p.recipe.length ? '1' : ''; });
+  if(!DB.seed2){
+    const d = (id, name, t, what) => ({id, name, desc:`Supply and fixing of ${what} aluminium window with glass and powder coating.`, hsn:'76101000', unit:'SQ.FT.', rate:'', calc:'', sec:'1', recipe:t ? structuredClone(TEMPL[t]) : []});
+    [d('sd2','Dumal 2 Track Aluminium Window','2 Track DUMAL','2 track Dumal series'), d('sd3','Dumal 3 Track Aluminium Window','3 Track DUMAL','3 track Dumal series'),
+     d('s342','3/4 Series 2 Track Aluminium Window','2 Track 3/4 Series','2 track 3/4 series'), d('r40','R/40 Series Openable Window','','R/40 series openable'),
+     d('s602','60mm 2 Track Aluminium Window','','60mm 2 track'), d('s603','60mm 3 Track Aluminium Window','','60mm 3 track')].forEach(x => DB.products.push(x));
+    DB.seed2 = 1; }
+};
+mig();
+const persist = () => { try { localStorage.setItem('gk_db', JSON.stringify(DB)); } catch { toast('Device storage is full'); } };
+const save = () => { persist(); syncSoon(); };
+const newQ = () => ({c:{name:'', addr:'', state:'GUJARAT', code:'24', gstin:'', phone:''}, ref:'', date:today(), items:[{pid:DB.products[0]?.id, qty:'', rate:''}]});
+delete DB.draft;
+const blank = () => ({name:'', desc:'', hsn:'76101000', unit:'SQ.FT.', rate:'', sec:'', recipe:[]});
+let Q = newQ(), E = null, EP = null;
+const C = {u:'ft', pid:DB.products[0]?.id, w:[{pid:DB.products[0]?.id, l:'', h:'', q:1}]};
 
 /* ---------- Helpers ---------- */
 function toast(m){ const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2200); }
@@ -115,8 +153,11 @@ function tot(q = Q){
   const sub = rows.reduce((a,r) => a + r.amt, 0), t = +(sub*(+DB.firm.gst||0)/100).toFixed(2), raw = sub + 2*t, grand = Math.round(raw);
   return {rows, sub, t, ro:+(grand-raw).toFixed(2), grand};
 }
-function ensureNo(){ if(!Q.no){ const n = +DB.firm.next || 1; Q.no = String(n).padStart(4,'0'); DB.firm.next = n + 1; } }
-function upsert(){ const c = structuredClone(Q), k = DB.quotes.findIndex(x => x.no === Q.no); k < 0 ? DB.quotes.unshift(c) : DB.quotes[k] = c; save(); }
+function ensureNo(){ if(!Q.no){ const n = Math.max(+DB.firm.next || 1, ...DB.quotes.map(x => (+x.no || 0) + 1)); Q.no = String(n).padStart(4,'0'); DB.firm.next = n + 1; } }
+function upsert(){ const c = structuredClone(Q), k = DB.quotes.findIndex(x => x.no === Q.no); if(k >= 0){ const o = DB.quotes[k]; c.pay = o.pay; c.st = o.st; c.inv = o.inv; }
+  k < 0 ? DB.quotes.unshift(c) : DB.quotes[k] = c;
+  const n = Q.c.name.trim().toLowerCase(), j = DB.clients.findIndex(x => x.name.toLowerCase() === n), cc = {...Q.c, name:Q.c.name.trim()};
+  j < 0 ? DB.clients.push(cc) : DB.clients[j] = cc; save(); }
 const fld = (l, b, v, a = '') => `<label>${l}<input data-b="${b}" value="${esc(v)}" ${a}></label>`;
 const num = 'type="number" inputmode="decimal" step="any"';
 
@@ -132,7 +173,8 @@ function rQuote(){
   const P = DB.products;
   $('#v-quote').innerHTML = `
   <div class="card"><h3>Client details</h3>
-    ${fld('Client name', 'Q.c.name', Q.c.name, 'autocomplete="off"')}
+    ${fld('Client name', 'Q.c.name', Q.c.name, 'autocomplete="off" list="cl" data-cl')}<datalist id="cl">${DB.clients.map(c => `<option value="${esc(c.name)}">`).join('')}</datalist>
+    ${fld('Client mobile (for WhatsApp follow-up)', 'Q.c.phone', Q.c.phone, 'inputmode="tel"')}
     <label>Address<textarea rows="2" data-b="Q.c.addr">${esc(Q.c.addr)}</textarea></label>
     <div class="two">${fld('State', 'Q.c.state', Q.c.state)}${fld('State code', 'Q.c.code', Q.c.code, 'inputmode="numeric"')}</div>
     <div class="two">${fld('Client GSTIN (optional)', 'Q.c.gstin', Q.c.gstin)}${fld('Ref. no (optional)', 'Q.ref', Q.ref)}</div>
@@ -160,87 +202,128 @@ function upd(){
 }
 
 /* ---------- Calculator tab (your original formulas) ---------- */
-const S = {
-  '3dumal':{n:'3 Track DUMAL', rub:9, bear:45, lock:150, pvc:1, mesh:1, hw:{bear:6,lock:3,khuniya:12,datta:6,cleat:24,angle:4}, kg:(L,H)=>(2*L+2*H)*.313+(6*H+3*L)*.21875+3*H*.084375},
-  '2dumal':{n:'2 Track DUMAL', rub:9, bear:45, lock:150, pvc:0, mesh:0, hw:{bear:4,lock:2,khuniya:8,datta:4,cleat:16,angle:4}, kg:(L,H)=>(2*L+2*H)*.313+(4*H+2*L)*.21875+2*H*.084375},
-  '34series':{n:'3 Track 3/4 Series', rub:5, bear:9, lock:25, pvc:1, mesh:1, hw:{bear:6,lock:3,khuniya:0,datta:0,cleat:0,angle:4}, kg:(L,H)=>(2*H+L)*.173+L*.2+(6*H+3*L)*.092},
-  '2_34':{n:'2 Track 3/4 Series', rub:5, bear:9, lock:25, pvc:0, mesh:0, hw:{bear:4,lock:2,khuniya:0,datta:0,cleat:0,angle:4}, kg:(L,H)=>(2*L+2*H)*.173+(4*H+2*L)*.092}
-};
 const UF = {ft:1, in:1/12, cm:1/30.48, mm:1/304.8};
-function wc(w){
+function wcs(w, p){
   const R = Object.fromEntries(Object.entries(DB.rates).map(([k,v]) => [k, +v||0])), k = UF[C.u];
   const L = (+w.l||0)*k, H = (+w.h||0)*k, q = Math.max(1, +w.q||1); if(!L || !H) return null;
-  const s = S[w.s], sw = L/2, n = {rub:4*(sw+H)*q, pvc:s.pvc ? 2*(sw+H)*q : 0, mesh:s.mesh ? sw*H*q : 0, glass:2*sw*H*q};
-  for(const x in s.hw) n[x] = s.hw[x]*q;
-  const kg = s.kg(L,H)*q, area = L*H*q;
-  const base = kg*(R.alu+R.powder) + area*R.labor + n.glass*R.glass + n.mesh*R.mesh + n.rub*s.rub + n.pvc*R.pvc + n.bear*s.bear + n.lock*s.lock + n.khuniya*R.khuniya + n.datta*R.datta + n.cleat*R.cleat + n.angle*R.angle;
-  return {area, base};
+  const area = L*H*q, lines = [{n:'Labour', u:'sq.ft', kg:0, qty:area, cost:area*R.labor}];
+  p.recipe.forEach(r => { const pt = DB.parts.find(x => x.id === r.p); if(!pt) return;
+    const qty = ((+r.a||0)*L + (+r.b||0)*H + (+r.c||0)*L*H + (+r.d||0))*q;
+    lines.push({n:pt.name, u:pt.unit, kg:+pt.kg||0, qty, cost:pt.kg ? qty*pt.kg*(R.alu + R.powder) : qty*(+pt.rate||0)}); });
+  return {area, base:lines.reduce((a,l) => a + l.cost, 0), lines};
+}
+function wc(w){
+  const p = DB.products.find(x => x.id == w.pid) || DB.products[0]; if(!p) return null;
+  const q = Math.max(1, +w.q||1), sq = p.unit === 'SQ.FT.';
+  if(p.sec){ const r = wcs(w, p); return r && {p, base:r.base, lines:r.lines, fin:r.base*(1 + (+DB.rates.profit||0)/100), qty:sq ? r.area : q, area:r.area}; }
+  if(sq){ const k = UF[C.u], a = (+w.l||0)*(+w.h||0)*k*k*q; return a ? {p, fin:a*(+p.rate||0), qty:a, area:a} : null; }
+  return {p, fin:q*(+p.rate||0), qty:q, area:0};
 }
 function rCalc(){
-  const row = (w,i) => `<div class="item"><div class="ih"><b>Window ${i+1}</b><button class="x" data-a="cdel" data-i="${i}">✕</button></div>
-    <select data-b="C.w.${i}.s">${Object.entries(S).map(([k,v]) => `<option value="${k}" ${k == w.s ? 'selected' : ''}>${v.n}</option>`).join('')}</select>
-    <div class="two" style="margin-top:8px"><label>Length<input ${num} data-b="C.w.${i}.l" value="${w.l}" placeholder="0"></label><label>Height<input ${num} data-b="C.w.${i}.h" value="${w.h}" placeholder="0"></label></div>
-    <label>Quantity<input ${num} data-b="C.w.${i}.q" value="${w.q}"></label></div>`;
-  $('#v-calc').innerHTML = `<div class="card"><h3>Window calculator</h3>
+  const row = (w,i) => { const p = DB.products.find(x => x.id == w.pid) || DB.products[0] || {}, dims = p.sec || p.unit === 'SQ.FT.', opt = x => `<option value="${x.id}" ${x.id == p.id ? 'selected' : ''}>${esc(x.name)}</option>`; return `<div class="item"><div class="ih"><b>Window ${i+1}</b><button class="x" data-a="cdel" data-i="${i}">✕</button></div>
+    <label>Room / location<input data-b="C.w.${i}.n" value="${esc(w.n||'')}" placeholder="e.g. Bedroom 1"></label><select data-b="C.w.${i}.pid" data-re><optgroup label="Aluminium sections">${DB.products.filter(x => x.sec).map(opt).join('')}</optgroup><optgroup label="Other items">${DB.products.filter(x => !x.sec).map(opt).join('')}</optgroup></select>
+    ${p.sec ? (p.recipe?.length ? '' : '<small style="color:var(--red)">No parts set up yet – add them in Setup</small>') : `<small style="color:var(--mut)">Fixed rate ₹ ${p.rate || 0} / ${p.unit}</small>`}
+    ${dims ? `<div class="two" style="margin-top:8px"><label>Length<input ${num} data-b="C.w.${i}.l" value="${w.l}" placeholder="0"></label><label>Height<input ${num} data-b="C.w.${i}.h" value="${w.h}" placeholder="0"></label></div>` : ''}
+    <label>Quantity<input ${num} data-b="C.w.${i}.q" value="${w.q}"></label></div>`; };
+  $('#v-calc').innerHTML = `<div class="card"><h3>Site visit</h3>${fld('Site / client name', 'C.site', C.site || '')}
+    <div class="two"><button class="sec" data-a="svSave">Save visit</button><select id="sv" style="margin:0;height:52px"><option value="">Saved visits…</option>${DB.visits.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('')}</select></div></div>
+    <div class="card"><h3>Window calculator</h3>
     <div class="seg">${Object.keys(UF).map(u => `<button class="${u == C.u ? 'on' : ''}" data-a="cu" data-u="${u}">${u == 'in' ? 'inch' : u}</button>`).join('')}</div>
     ${C.w.map(row).join('')}<button class="ghost" data-a="cadd">+ Add window</button></div><div id="cres"></div>`;
   calc();
 }
 function calc(){
-  let area = 0, base = 0; C.w.forEach(w => { const r = wc(w); if(r){ area += r.area; base += r.base; } });
-  const el = $('#cres'); if(!area){ el.innerHTML = ''; return; }
-  const fin = base*(1 + (+DB.rates.profit||0)/100), sq = fin/area;
-  el.innerHTML = `<div class="card"><div class="row"><span>Total area</span><b>${f(area)} sq.ft</b></div>
-    <div class="row"><span>Your cost / sq.ft</span><b>₹ ${f(base/area)}</b></div>
-    <div class="row"><span>Selling / sq.ft (+${DB.rates.profit}% profit)</span><b>₹ ${f(sq)}</b></div>
+  const g = {}, bd = {}; let base = 0, fin = 0, prof = 0;
+  C.w.forEach(w => { const r = wc(w); if(!r) return; const e = g[r.p.id] ||= {p:r.p, qty:0, fin:0}; e.qty += r.qty; e.fin += r.fin; fin += r.fin;
+    if(r.lines){ base += r.base; prof += r.fin - r.base; r.lines.forEach(l => { const b = bd[l.n] ||= {...l, qty:0, cost:0}; b.qty += l.qty; b.cost += l.cost; }); } });
+  C.g = Object.values(g); const el = $('#cres'); if(!C.g.length){ el.innerHTML = ''; return; }
+  const kg = Object.values(bd).reduce((a,b) => a + b.qty*b.kg, 0);
+  el.innerHTML = `<div class="card">${C.g.map(e => `<div class="row"><span>${esc(e.p.name)}<br><small style="color:var(--mut)">${f(e.qty)} ${e.p.unit} × ₹ ${f(e.fin/e.qty)}</small></span><b>₹ ${f(e.fin)}</b></div>`).join('')}
+    ${base ? `<div class="row"><span>Your cost</span><b>₹ ${f(base)}</b></div><div class="row"><span>Profit (${DB.rates.profit}%)</span><b>₹ ${f(prof)}</b></div>
+    <details style="margin:10px 0 0"><summary>Materials breakdown</summary>${Object.values(bd).map(b => `<div class="row"><span>${esc(b.n)}<br><small style="color:var(--mut)">${f(b.qty)} ${esc(b.u)}</small></span><b>₹ ${f(b.cost)}</b></div>`).join('')}
+    ${kg ? `<div class="row"><span>Total aluminium weight</span><b>${f(kg)} kg</b></div>` : ''}</details>` : ''}
     <div class="gr"><span>Selling total</span><b>₹ ${Math.round(fin).toLocaleString('en-IN')}</b></div>
-    <label style="margin-top:12px">Add to quote as<select data-b="C.pid">${DB.products.map(p => `<option value="${p.id}" ${p.id == C.pid ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
-    <button class="pri" style="width:100%" data-a="c2q" data-area="${area}" data-rate="${sq}">Add to quotation</button></div>`;
+    <button class="pri" style="width:100%;margin-top:12px" data-a="c2q">Add all to quotation</button></div>`;
 }
 
 /* ---------- Setup tab ---------- */
 function rSetup(){
-  const F = DB.firm, e = DB.products.find(p => p.id === E) || {name:'', desc:'', hsn:'76101000', unit:'SQ.FT.'};
+  EP ||= blank();
+  const F = DB.firm, e = EP, units = ['SQ.FT.','NOS','RFT','SQ.MT.','SET','LS'];
+  const rl = (r,i) => `<div class="item"><div class="ih"><select style="margin:0 8px 0 0" data-b="EP.recipe.${i}.p">${DB.parts.map(x => `<option value="${x.id}" ${x.id === r.p ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select><button class="x" data-a="rdel" data-i="${i}">✕</button></div>
+    <div class="four">${['a','b','c','d'].map((k,j) => `<label>${['×Length','×Height','×L×H','+Fixed'][j]}<input ${num} data-b="EP.recipe.${i}.${k}" value="${r[k] ?? 0}"></label>`).join('')}</div></div>`;
   $('#v-setup').innerHTML = `
   <details open><summary>My products</summary>
-    ${DB.products.map(p => `<div class="pr"><div><b>${esc(p.name)}</b><small>${p.unit} · HSN ${esc(p.hsn)}</small></div><button data-a="editP" data-id="${p.id}">Edit</button><button data-a="delP" data-id="${p.id}">✕</button></div>`).join('')}
+    ${DB.products.map(p => `<div class="pr"><div><b>${esc(p.name)}</b><small>${p.unit} · HSN ${esc(p.hsn)} · ${p.sec ? p.recipe.length + ' parts' : 'Rate ₹' + (p.rate || 0)}</small></div><button data-a="editP" data-id="${p.id}">Edit</button><button data-a="delP" data-id="${p.id}">✕</button></div>`).join('')}
     <h3 style="margin-top:14px">${E ? 'Edit product' : 'Add a product'}</h3>
-    <label>Product name<input id="pn" value="${esc(e.name)}"></label>
-    <label>Description on quotation<textarea id="pd" rows="3">${esc(e.desc)}</textarea></label>
-    <div class="two"><label>HSN code<input id="ph" value="${esc(e.hsn)}" inputmode="numeric"></label>
-    <label>Unit<select id="pu">${['SQ.FT.','NOS','RFT','SQ.MT.','SET','LS'].map(u => `<option ${u == e.unit ? 'selected' : ''}>${u}</option>`).join('')}</select></label></div>
-    <button class="pri" style="width:100%" data-a="saveP">Save product</button></details>
+    <label>Product name<input data-b="EP.name" value="${esc(e.name)}"></label>
+    <label>Description on quotation<textarea rows="3" data-b="EP.desc">${esc(e.desc)}</textarea></label>
+    <div class="two"><label>HSN code<input data-b="EP.hsn" value="${esc(e.hsn)}" inputmode="numeric"></label>
+    <label>Unit<select data-b="EP.unit">${units.map(u => `<option ${u == e.unit ? 'selected' : ''}>${u}</option>`).join('')}</select></label></div>
+    <label>Type<select data-b="EP.sec" data-re><option value="1" ${e.sec ? 'selected' : ''}>Aluminium section (priced from parts)</option><option value="" ${e.sec ? '' : 'selected'}>Other item (fixed rate)</option></select></label>
+    ${e.sec ? `<h3>Parts used per window</h3>
+    <p class="hint">Quantity of a part = ×Length + ×Height + ×L×H + fixed number, measured in feet.</p>
+    <select id="tpl" style="margin-bottom:10px"><option value="">Start from…</option><optgroup label="Templates">${Object.keys(TEMPL).map(k => `<option>${k}</option>`).join('')}</optgroup>
+    <optgroup label="Copy from a section">${DB.products.filter(x => x.sec && x.recipe.length && x.id !== E).map(x => `<option value="p:${x.id}">${esc(x.name)}</option>`).join('')}</optgroup></select>
+    ${e.recipe.map(rl).join('')}<button class="ghost" data-a="radd">+ Add part</button>`
+    : `<label>Fixed rate ₹ per unit<input ${num} data-b="EP.rate" value="${e.rate ?? ''}"></label>`}
+    <button class="pri" style="width:100%;margin-top:12px" data-a="saveP">Save product</button>
+    ${E ? '<button class="sec" style="width:100%;margin-top:8px" data-a="cancelP">Cancel edit</button>' : ''}</details>
   <details><summary>Firm and quotation settings</summary>
     ${fld('Firm name (shown beside signature)', 'DB.firm.name', F.name)}
     ${fld('Firm GSTIN', 'DB.firm.gstin', F.gstin)}
     <div class="two">${fld('GST % (total)', 'DB.firm.gst', F.gst * 2, num)}${fld('Next quote no.', 'DB.firm.next', F.next, num)}</div>
     <label>Terms and conditions<textarea rows="8" data-b="DB.firm.terms">${esc(F.terms)}</textarea></label></details>
-  <details><summary>Calculator rates</summary><div class="two">
-    ${Object.entries({alu:'Aluminium ₹/kg', powder:'Powder ₹/kg', glass:'Glass', mesh:'Mesh', pvc:'PVC patti', angle:'Angle', khuniya:'Khuniya', datta:'Datta', cleat:'Cleat', labor:'Labour ₹/sq.ft', profit:'Profit %'}).map(([k,l]) => fld(l, 'DB.rates.' + k, DB.rates[k], num)).join('')}</div></details>`;
+  <details><summary>Account and sync</summary><p class="hint">Signed in as ${esc(USER?.email || '')}. Sync status shows under the title at the top.</p><button class="sec" style="width:100%" data-a="logout">Log out of this device</button></details>
+  <details><summary>Parts and rates</summary>
+    <p class="hint">Tip: put the section in the part name, like "Track (60mm)". Aluminium profiles use "Kg per unit" (priced from the aluminium and powder rates). Other parts use "Rate".</p>
+    ${DB.parts.map((x,i) => `<div class="item"><div class="ih"><input style="margin:0 8px 0 0" data-b="DB.parts.${i}.name" value="${esc(x.name)}"><button class="x" data-a="pdel" data-i="${i}">✕</button></div>
+    <div class="three"><label>Unit<input data-b="DB.parts.${i}.unit" value="${esc(x.unit)}"></label><label>Rate ₹<input ${num} data-b="DB.parts.${i}.rate" value="${x.rate}"></label><label>Kg per unit<input ${num} data-b="DB.parts.${i}.kg" value="${x.kg}"></label></div></div>`).join('')}
+    <button class="ghost" data-a="padd">+ Add part</button></details>
+  <details><summary>Main rates</summary><div class="two">
+    ${Object.entries({alu:'Aluminium ₹/kg', powder:'Powder coat ₹/kg', labor:'Labour ₹/sq.ft', profit:'Profit %'}).map(([k,l]) => fld(l, 'DB.rates.' + k, DB.rates[k], num)).join('')}</div></details>`;
 }
 /* ---------- Saved tab ---------- */
+function apply(d){ DB = {...D0, clients:[], visits:[], ...d, firm:{...D0.firm, ...d.firm}, rates:{...D0.rates, ...d.rates}}; delete DB.draft; mig(); save(); Q = newQ(); }
+function qcard(q){
+  const g = tot(q).grand, paid = (q.pay||[]).reduce((a,x) => a + x.a, 0), age = Math.floor((Date.now() - new Date(q.date))/864e5), st = q.st || 'Pending', n = `data-no="${q.no}"`;
+  return `<div class="card item"><div class="ih"><b>#${q.no} · ${esc(q.c.name)}</b><button class="x" data-a="delQ" ${n}>✕</button></div>
+  <div class="amt">${dfmt(q.date)}<b>₹ ${f(g)}</b></div>
+  ${st === 'Pending' && age >= 3 ? `<p style="color:var(--red);font-size:13px;font-weight:600">Follow up due · sent ${age} days ago</p>` : ''}
+  <div class="row"><span>Paid ₹ ${f(paid)}</span><b>Balance ₹ ${f(g-paid)}</b></div>
+  <p style="font-size:12px;color:var(--mut)">50% ₹${f(g*.5)} · 30% ₹${f(g*.3)} · 20% ₹${f(g*.2)}${(q.pay||[]).map(x => `<br>${dfmt(x.d)}: ₹${f(x.a)} ${esc(x.n)}`).join('')}</p>
+  <label style="margin-top:8px">Status<select data-st ${n}>${['Pending','Approved','Lost'].map(x => `<option ${x === st ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+  <div class="btns" style="margin-top:0"><button class="sec" data-a="openQ" ${n}>Open</button><button class="sec" data-a="dupQ" ${n}>Duplicate</button>
+  <button class="sec" data-a="pay" ${n}>Add payment</button><button class="sec" data-a="inv" ${n}>Invoice PDF</button><button class="sec" data-a="wa" ${n} style="grid-column:1/-1">WhatsApp follow-up</button></div></div>`;
+}
+function backup(){
+  const a = document.createElement('a'); a.download = `Gurukrupa-backup-${today()}.json`;
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(DB)], {type:'application/json'})); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Backup saved to your device');
+}
 function rSaved(){
-  $('#v-saved').innerHTML = DB.quotes.length ? DB.quotes.map(q => `<div class="card item"><div class="ih"><b>#${q.no} · ${esc(q.c.name)}</b><button class="x" data-a="delQ" data-no="${q.no}">✕</button></div>
-    <div class="amt">${dfmt(q.date)}<b>₹ ${f(tot(q).grand)}</b></div><div class="btns"><button class="sec" data-a="openQ" data-no="${q.no}">Open</button><button class="sec" data-a="dupQ" data-no="${q.no}">Duplicate</button></div></div>`).join('')
-    : '<p class="empty">No saved quotations yet.<br>Generate or save one from the Quote tab.</p>';
+  const tools = `<div class="card"><h3>Backup on this device</h3>
+    <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Saves your products, settings and quotations as a file in your phone's Downloads. Restore it on any phone.</p>
+    <div class="two"><button class="pri" data-a="backup">Save backup</button><label class="sec" style="display:flex;align-items:center;justify-content:center;border-radius:14px;height:52px;font-weight:600;font-size:15px;color:var(--ink);margin:0;cursor:pointer">Restore<input type="file" accept=".json,application/json" data-restore style="display:none"></label></div></div>`;
+  $('#v-saved').innerHTML = tools + (DB.quotes.length ? DB.quotes.map(qcard).join('')
+    : '<p class="empty">No saved quotations yet.<br>Generate or save one from the Quote tab.</p>');
 }
 
 /* ---------- PDF ---------- */
-function build(q){
+function build(q, inv){
   const {jsPDF} = window.jspdf, d = new jsPDF({unit:'mm', format:'a4'}), F = DB.firm, t = tot(q);
   const xs = [18, 92, 114, 134, 152, 174], line = (x1,y1,x2,y2) => d.line(x1,y1,x2,y2);
   d.setLineWidth(.3); d.setDrawColor(0); d.setTextColor(0);
   d.addImage(BG,'JPEG',0,0,210,297);
   // header rows
-  d.setFontSize(8); d.text('GSTIN No.', 10, 39); d.setFont('helvetica','normal'); d.text(F.gstin, 28, 39); d.setFont('helvetica','bold'); d.setFontSize(10); d.text('QUOTATION', 75, 39);
+  d.setFontSize(8); d.text('GSTIN No.', 10, 39); d.setFont('helvetica','normal'); d.text(F.gstin, 28, 39); d.setFont('helvetica','bold'); d.setFontSize(10); d.text(inv ? 'TAX INVOICE' : 'QUOTATION', 75, 39);
   line(8,41,202,41); d.setFontSize(8); d.text('TO,', 10, 46); d.setFontSize(9); d.text(d.splitTextToSize(q.c.name.toUpperCase(), 95), 10, 52);
   d.setFontSize(7.5); d.text(d.splitTextToSize(q.c.addr.toUpperCase(), 95), 10, 57);
   d.setFontSize(8); d.text('State', 10, 69); d.setFont('helvetica','normal'); d.text(q.c.state, 28, 69); d.setFont('helvetica','bold'); d.text('Code', 80, 69); d.setFont('helvetica','normal'); d.text(q.c.code, 92, 69);
   line(110,41,110,71); [48,55,62].forEach(y => line(110,y,202,y)); d.setFont('helvetica','bold');
-  d.text('Qout. No', 112, 46); d.setFont('helvetica','normal'); d.text(q.no, 128, 46); d.setFont('helvetica','bold'); d.text('Date', 170, 46); d.setFont('helvetica','normal'); d.text(dfmt(q.date), 183, 46);
+  d.text(inv ? 'Invoice No' : 'Qout. No', 112, 46); d.setFont('helvetica','normal'); d.text(inv || q.no, 128, 46); d.setFont('helvetica','bold'); d.text('Date', 170, 46); d.setFont('helvetica','normal'); d.text(dfmt(q.date), 183, 46);
   d.setFont('helvetica','bold'); d.text('Ref.No', 112, 53); d.setFont('helvetica','normal'); d.text(q.ref || '', 128, 53); d.setFont('helvetica','bold'); d.text('Date', 170, 53); d.setFont('helvetica','normal'); d.text(dfmt(q.date), 183, 53);
   d.setFont('helvetica','bold'); d.text('Kind Attn.', 112, 60); d.text('GSTIN No.', 112, 69); d.setFont('helvetica','normal'); d.text(q.c.gstin || '', 132, 69);
-  line(8,71,202,71); d.text('Dear Sir;', 10, 76); d.setFontSize(7.5); d.text('We thank you very much for your inquiry as noted and are pleased to submit our most competitive offer for the same as under :', 10, 81);
+  line(8,71,202,71); d.text('Dear Sir;', 10, 76); d.setFontSize(7.5); d.text((inv ? 'Please find below our invoice for the goods supplied and work executed :' : 'We thank you very much for your inquiry as noted and are pleased to submit our most competitive offer for the same as under :'), 10, 81);
   line(8,83,202,83);
   // items table
   let hb = 92; const items = t.rows;
@@ -262,7 +345,7 @@ function build(q){
   line(8,y+25,202,y+25); d.setFont('helvetica','bold'); d.setFontSize(7.5); d.text(d.splitTextToSize(`RUPEES : ${wd(t.grand)} ONLY`, 96), 10, y+30);
   d.setFontSize(8); d.text('Total Amount:-', 110, y+30); d.text(f(t.grand), 200, y+30, {align:'right'});
   line(8,y+34,202,y+34); d.setFont('helvetica','bold'); d.text('Terms & Condition :', 10, y+39); d.setFont('helvetica','normal'); d.setFontSize(6.5);
-  d.text(d.splitTextToSize(F.terms, 96), 10, y+43);
+  d.text(d.splitTextToSize(inv ? F.terms.split('\n').filter(l => !/VALID|quoted rates/i.test(l)).join('\n') : F.terms, 96), 10, y+43);
   d.setFont('helvetica','bold'); d.setFontSize(8); d.text('For, ' + F.name.toUpperCase(), 156, y+39, {align:'center'});
   d.addImage(SIGN,'PNG',141,y+42,30,30*272/578);
   d.text('(Authorized Signatory)', 156, y+62, {align:'center'}); line(108,y+65,202,y+65); d.text('Name Designation', 110, y+70);
@@ -280,33 +363,58 @@ async function pdf(share){
 }
 
 /* ---------- Events ---------- */
-function set(p, v){ const k = p.split('.'); let o = ({Q,DB,C})[k.shift()]; while(k.length > 1) o = o[k.shift()]; o[k[0]] = v; }
+function set(p, v){ const k = p.split('.'); let o = ({Q,DB,C,EP})[k.shift()]; while(k.length > 1) o = o[k.shift()]; o[k[0]] = v; }
 document.addEventListener('input', e => {
   const el = e.target, p = el.dataset.b; if(!p) return;
   let v = el.value; if(p === 'DB.firm.gst') v = (+v||0)/2;
   set(p, v);
-  if(p[0] === 'Q'){ if(/items/.test(p)) upd(); DB.draft = Q; save(); } else if(p[0] === 'C') calc(); else save();
-  if(el.hasAttribute('data-re')) rQuote();
+  if(/^Q\.items\.\d+\.pid$/.test(p)){ const it = Q.items[+p.split('.')[2]], pr = DB.products.find(x => x.id == v); if(!it.rate && pr?.rate) it.rate = String(pr.rate); }
+  if(p[0] === 'Q'){ if(/items/.test(p)) upd(); } else if(p[0] === 'C') calc(); else save();
+  if(el.hasAttribute('data-re')) (p[0] === 'C' ? rCalc : p[0] === 'E' ? rSetup : rQuote)();
+});
+document.addEventListener('change', e => {
+  const el = e.target, D = el.dataset;
+  if(el.id === 'tpl'){ const v = el.value, src = v.startsWith('p:') ? DB.products.find(x => x.id === v.slice(2))?.recipe : TEMPL[v]; if(src){ EP.recipe = structuredClone(src); rSetup(); } return; }
+  if('cl' in D){ const c = DB.clients.find(x => x.name.toLowerCase() === el.value.trim().toLowerCase()); if(c){ Q.c = {...Q.c, ...c}; rQuote(); } return; }
+  if('st' in D){ DB.quotes.find(x => x.no === D.no).st = el.value; save(); rSaved(); return; }
+  if(el.id === 'sv'){ const v = DB.visits.find(x => x.id === el.value); if(v){ C.site = v.name; C.u = v.u; C.w = structuredClone(v.w); rCalc(); } return; }
+  if(!('restore' in D) || !el.files[0]) return;
+  const r = new FileReader();
+  r.onload = () => { try { const d = JSON.parse(r.result); if(!Array.isArray(d.products) || !d.firm) throw 0;
+    apply(d); rSaved(); toast('Backup restored'); }
+    catch { toast('This is not a valid backup file'); } };
+  r.readAsText(el.files[0]);
 });
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-a]'); if(!b) return;
-  const D = b.dataset, i = +D.i, P = DB.products;
+  const D = b.dataset, i = +D.i, P = DB.products, fq = () => DB.quotes.find(x => x.no === D.no);
   ({
-    tab:() => tab(D.t),
+    tab:() => tab(D.t), backup,
+    logout:async () => { if(!confirm('Log out and clear the data stored on this device? Everything stays safe in the cloud.')) return; try { await signOut(auth); } catch {} localStorage.removeItem('gk_db'); localStorage.removeItem('gk_synced'); location.reload(); },
+    pay:() => { const q = fq(), a = parseFloat(prompt('Amount received (₹)')); if(!a) return; (q.pay = q.pay || []).push({d:today(), a, n:prompt('Note (e.g. Advance 50%)', '') || ''}); save(); rSaved(); },
+    inv:() => { const q = fq(); if(!q.inv){ const n = Math.max(+DB.firm.nextInv || 1, ...DB.quotes.map(x => x.inv ? (+x.inv.slice(4) || 0) + 1 : 1)); q.inv = 'INV-' + String(n).padStart(4,'0'); DB.firm.nextInv = n + 1; save(); }
+      build(q, q.inv).save(`Invoice-${q.inv}-${q.c.name.trim().replace(/\W+/g,'_')}.pdf`); toast('Invoice downloaded'); },
+    wa:() => { const q = fq(), ph = (q.c.phone || '').replace(/\D/g,''); open(`https://wa.me/${ph.length === 10 ? '91' + ph : ph}?text=` + encodeURIComponent(`Namaste ${q.c.name}, this is ${DB.firm.name}. We sent you quotation #${q.no} dated ${dfmt(q.date)} for ₹ ${f(tot(q).grand)}. Please let us know if you would like to proceed.`), '_blank'); },
+    svSave:() => { if(!(C.site || '').trim()) return toast('Enter the site name'); DB.visits.unshift({id:uid(), ts:Date.now(), name:C.site.trim(), u:C.u, w:structuredClone(C.w)}); save(); rCalc(); toast('Site visit saved'); },
     add:() => { Q.items.push({pid:Q.items.at(-1)?.pid || P[0]?.id, qty:'', rate:''}); rQuote(); },
     di:() => { Q.items.splice(i,1); if(!Q.items.length) Q.items.push({pid:P[0]?.id, qty:'', rate:''}); rQuote(); },
     pdf:() => pdf(false), share:() => pdf(true),
     saveq:() => { if(!Q.c.name.trim()) return toast('Enter the client name'); ensureNo(); Q.items.forEach(x => x.p = P.find(y => y.id == x.pid) || x.p); upsert(); toast('Saved as #' + Q.no); },
-    newq:() => { Q = newQ(); DB.draft = Q; save(); rQuote(); scrollTo(0,0); },
+    newq:() => { Q = newQ(); rQuote(); scrollTo(0,0); },
     cu:() => { C.u = D.u; rCalc(); },
     cadd:() => { C.w.push({...C.w.at(-1), l:'', h:'', q:1}); rCalc(); },
-    cdel:() => { C.w.splice(i,1); if(!C.w.length) C.w.push({s:'3dumal', l:'', h:'', q:1}); rCalc(); },
-    c2q:() => { const it = {pid:C.pid || P[0]?.id, qty:(+D.area).toFixed(2), rate:String(Math.round(+D.rate))}, last = Q.items.at(-1);
-      last && !last.qty && !last.rate ? Q.items[Q.items.length-1] = it : Q.items.push(it); DB.draft = Q; save(); tab('quote'); toast('Added to quotation'); },
-    saveP:() => { const n = $('#pn').value.trim(); if(!n) return toast('Enter a product name');
-      const o = {id:E || uid(), name:n, desc:$('#pd').value.trim(), hsn:$('#ph').value.trim(), unit:$('#pu').value}, k = P.findIndex(x => x.id === E);
-      k < 0 ? P.push(o) : P[k] = o; E = null; save(); rSetup(); toast('Product saved'); },
-    editP:() => { E = D.id; rSetup(); scrollTo(0, document.body.scrollHeight); },
+    cdel:() => { C.w.splice(i,1); if(!C.w.length) C.w.push({pid:DB.products[0]?.id, l:'', h:'', q:1}); rCalc(); },
+    c2q:() => { C.g.forEach(e => { const it = {pid:e.p.id, qty:e.qty.toFixed(2), rate:String(Math.round(e.fin/e.qty))}, last = Q.items.at(-1);
+      last && !last.qty && !last.rate ? Q.items[Q.items.length-1] = it : Q.items.push(it); }); tab('quote'); toast('Added to quotation'); },
+    saveP:() => { const n = (EP.name || '').trim(); if(!n) return toast('Enter a product name');
+      const o = {...EP, name:n, id:E || uid(), calc:'', recipe:(EP.sec ? EP.recipe : []).filter(r => r.p).map(r => ({p:r.p, a:+r.a||0, b:+r.b||0, c:+r.c||0, d:+r.d||0}))}, k = P.findIndex(x => x.id === E);
+      k < 0 ? P.push(o) : P[k] = o; E = null; EP = blank(); save(); rSetup(); toast('Product saved'); },
+    cancelP:() => { E = null; EP = blank(); rSetup(); },
+    radd:() => { EP.recipe.push({p:DB.parts[0]?.id, a:0, b:0, c:0, d:0}); rSetup(); },
+    rdel:() => { EP.recipe.splice(i,1); rSetup(); },
+    padd:() => { DB.parts.push({id:uid(), name:'New part', unit:'pcs', rate:0, kg:0}); save(); rSetup(); },
+    pdel:() => { if(confirm('Delete this part?')){ DB.parts.splice(i,1); save(); rSetup(); } },
+    editP:() => { E = D.id; EP = structuredClone(P.find(x => x.id === E)); EP.recipe ||= []; rSetup(); scrollTo(0, document.body.scrollHeight); },
     delP:() => { if(confirm('Delete this product?')){ DB.products = P.filter(x => x.id !== D.id); save(); rSetup(); } },
     openQ:() => { Q = structuredClone(DB.quotes.find(x => x.no === D.no)); tab('quote'); },
     dupQ:() => { Q = structuredClone(DB.quotes.find(x => x.no === D.no)); delete Q.no; Q.date = today(); tab('quote'); toast('Copied – new number on save'); },
@@ -314,7 +422,72 @@ document.addEventListener('click', e => {
   })[D.a]?.();
 });
 
-$('#hn').innerHTML = `${esc(DB.firm.name)}<small>Quotation studio</small>`;
+/* ---------- Cloud sync (Firebase) ---------- */
+const fapp = initializeApp({apiKey:"AIzaSyB-rcY8HPwwVls3Xw2Lo8hXYG1gwf3ujmQ", authDomain:"gurukrupa-quote.firebaseapp.com", projectId:"gurukrupa-quote",
+  storageBucket:"gurukrupa-quote.firebasestorage.app", messagingSenderId:"25407967579", appId:"1:25407967579:web:faa41fa7c9dc0df499ca7e"});
+const auth = getAuth(fapp);
+const fdb = initializeFirestore(fapp, {localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});
+// [collection, DB array, id of an item, keep order?]
+const COLS = [['products','products',o => o.id,1], ['parts','parts',o => o.id,1], ['quotes','quotes',o => o.no,0],
+  ['clients','clients',o => encodeURIComponent(o.name.trim().toLowerCase()).slice(0,150) || 'x',0], ['visits','visits',o => o.id,0]];
+const ORDER = {quotes:(a,b) => b.no.localeCompare(a.no), clients:(a,b) => a.name.localeCompare(b.name), visits:(a,b) => (b.ts||0) - (a.ts||0)};
+const sj = o => JSON.stringify(o, (k,v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map(x => [x, v[x]])) : v);
+const clean = o => JSON.parse(JSON.stringify(o));
+let USER = null, READY = false, STARTED = false, LAST = {}, pt;
+const ST = t => { const e = document.querySelector('#hn small'); if(e) e.textContent = 'Quotation studio · ' + t; };
+function setHn(){ $('#hn').innerHTML = `${esc(DB.firm.name)}<small>Quotation studio</small>`; }
+function syncSoon(){ clearTimeout(pt); pt = setTimeout(syncUp, 700); }
+function syncUp(){
+  if(!READY) return;
+  const cur = {settings:{main:{firm:DB.firm, rates:DB.rates, seed2:DB.seed2 || 0}}};
+  COLS.forEach(([c,a,key,ord]) => { cur[c] = {}; DB[a].forEach((o,i) => { cur[c][key(o)] = ord ? {...o, ord:i} : o; }); });
+  for(const c in cur){
+    LAST[c] ||= {};
+    for(const id in cur[c]){ const js = sj(clean(cur[c][id])); if(LAST[c][id] !== js){ LAST[c][id] = js;
+      setDoc(doc(fdb, c, id), clean(cur[c][id])).catch(() => ST('Sync blocked – check Firestore rules')); } }
+    for(const id in LAST[c]) if(!(id in cur[c])){ delete LAST[c][id]; deleteDoc(doc(fdb, c, id)).catch(() => {}); }
+  }
+  ST(navigator.onLine ? 'Synced' : 'Offline – will sync later');
+}
+function parse(c, docs){
+  const [, , , ord] = COLS.find(x => x[0] === c); LAST[c] = {};
+  let list = docs.map(d => { LAST[c][d.id] = sj(d.data()); const {ord:z, ...o} = d.data(); return [z ?? 0, o]; });
+  if(ord) list.sort((a,b) => a[0] - b[0]);
+  list = list.map(x => x[1]); if(ORDER[c]) list.sort(ORDER[c]); return list;
+}
+function loadSettings(d){ LAST.settings = {main:sj(d)}; DB.firm = {...D0.firm, ...d.firm}; DB.rates = {...D0.rates, ...d.rates}; DB.seed2 = d.seed2 || 0; }
+function refresh(){
+  const a = document.activeElement; if(a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return;
+  const v = document.querySelector('.view:not([hidden])'); if(v){ const y = scrollY; tab(v.id.slice(2)); scrollTo(0, y); } setHn(); ST('Synced');
+}
+async function startSync(){
+  if(STARTED) return; STARTED = true; ST('Syncing…');
+  try {
+    const [st, ...rest] = await Promise.all([getDoc(doc(fdb,'settings','main')), ...COLS.map(c => getDocs(collection(fdb, c[0])))]);
+    LAST = {};
+    if(st.exists()){
+      const first = !localStorage.getItem('gk_synced'), localHas = DB.quotes.length || DB.clients.length;
+      const cloudWins = !(first && localHas) || confirm('This device already has saved quotations and the cloud also has data.\n\nOK = keep the cloud data and add this device\'s quotations to it.\nCancel = replace the cloud data with this device\'s data.');
+      const lists = COLS.map((c,i) => parse(c[0], rest[i].docs)), old = {quotes:DB.quotes, clients:DB.clients, visits:DB.visits};
+      LAST.settings = {main:sj(st.data())};
+      if(cloudWins){
+        COLS.forEach((c,i) => DB[c[1]] = lists[i]); loadSettings(st.data());
+        if(first) for(const k in old){ const key = COLS.find(x => x[0] === k)[2]; old[k].forEach(o => { if(!DB[k].some(x => key(x) === key(o))) DB[k].push(o); }); DB[k].sort(ORDER[k]); }
+      }
+    }
+    mig(); localStorage.setItem('gk_synced', '1'); READY = true; persist(); syncUp(); setHn(); refresh();
+    onSnapshot(doc(fdb,'settings','main'), s => { if(s.metadata.hasPendingWrites || !s.exists() || sj(s.data()) === LAST.settings?.main) return; loadSettings(s.data()); persist(); refresh(); });
+    COLS.forEach(c => onSnapshot(collection(fdb, c[0]), s => { if(s.metadata.hasPendingWrites) return; DB[c[1]] = parse(c[0], s.docs); mig(); persist(); refresh(); }));
+    ST('Synced');
+  } catch(e) { STARTED = false; ST('Offline – using this device\'s data'); }
+}
+onAuthStateChanged(auth, u => { USER = u; $('#login').hidden = !!u; if(u) startSync(); else { READY = false; STARTED = false; } });
+$('#lf').addEventListener('submit', async e => { e.preventDefault(); $('#le').textContent = '';
+  try { await signInWithEmailAndPassword(auth, $('#lem').value.trim(), $('#lpw').value); } catch { $('#le').textContent = 'Wrong email or password, or no internet.'; } });
+addEventListener('online', () => { if(USER && !STARTED) startSync(); else ST('Synced'); });
+addEventListener('offline', () => ST('Offline – will sync later'));
+
+setHn();
 tab('quote');
 </script>
 </body>
